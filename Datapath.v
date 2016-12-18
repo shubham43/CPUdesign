@@ -23,7 +23,7 @@ module CPU_datapath(clk,ldPC,ldIR,ldMAR,rd_mem,wr_mem,ldtmp,ldMDRZ,ldMDRdata,wr_
 	wr_regA,rd_regA,fsel,opd1,opd2,opd3,C,V,S,Z_det,state,next_state,opc,reset,
 	rom_mem0,rom_mem1,rom_mem2,rom_mem3,rom_mem4,rom_mem5,rom_mem6,rom_mem7,rom_mem8,rom_mem9,
 	rom_mem10,rom_mem11,rom_mem12,rom_mem13,rom_mem14,rom_mem15,rom_mem16,rom_mem17,rom_mem18,rom_mem19,
-	r0,r1,r2,r3,r4,r5,r6,r7);
+	r0,r1,r2,r3,r4,r5,r6,r7);	// Main datapath module to connect different datapath elements
 	
 	
 	wire[15:0] Zbus,XYbus,PC,IRin,MAR,out_data,MDRin,MDR,tmp,reg_rdOut,Y;
@@ -73,16 +73,19 @@ module CPU_datapath(clk,ldPC,ldIR,ldMAR,rd_mem,wr_mem,ldtmp,ldMDRZ,ldMDRdata,wr_
 	
 	Register_5bit next_move(next_state,clk,state,reset);
 	
-	always@(clk&(~reset))begin
-		$display("\n state=%h PC=%h MAR=%h tmp=%h MDR=%h MDRin=%h ldMDR=%h out_data=%h XYbusInSel=%h ldXYbus=%h XYbus=%h Y=%h fsel=%h ldALU=%h Zbus=%h r0=%h r1=%h r2=%h r3=%h r4=%h\n",state,PC,MAR,tmp,MDR,MDRin,ldMDR,out_data,XYbusInSel,ldXYbus,XYbus,Y,fsel,ldALU,Zbus,r0,r1,r2,r3,r4);
-	end
-
 endmodule
 
 
 module Memory(address,read,write,clk,in_data,out_data,reset,
 	rom_mem0,rom_mem1,rom_mem2,rom_mem3,rom_mem4,rom_mem5,rom_mem6,rom_mem7,rom_mem8,rom_mem9,
 	rom_mem10,rom_mem11,rom_mem12,rom_mem13,rom_mem14,rom_mem15,rom_mem16,rom_mem17,rom_mem18,rom_mem19);
+					//address : 16-bit address line 
+					//read : read from memory : flag
+					//write : write into memory : flag
+					//clk : clock (unusual memory module which reads or write @ positive edge of the clock)
+					//in_data : data to write into memory
+					//out_data : data to read from memory
+					//rom : initial instruction set to initialize memory (used for testing)
 
 	input[15:0]address;
 	input read,write,clk,reset;
@@ -140,24 +143,11 @@ module Memory(address,read,write,clk,in_data,out_data,reset,
 		if(write)begin
 			memory[address]=in_data[15:8];
 			memory[{address[15:1],1'b1}]=in_data[7:0];
-			$display("memory[%h]=%h%h",address,memory[address],memory[{address[15:1],1'b1}]);
 		end
-	end
-	always@(negedge reset)begin
-		$display("memory[0]=%h",memory[0]);
-		$display("memory[1]=%h",memory[1]);
-		$display("memory[2]=%h",memory[2]);
-		$display("memory[3]=%h",memory[3]);
-		$display("memory[4]=%h",memory[4]);
-		$display("memory[5]=%h",memory[5]);
-		$display("memory[6]=%h",memory[6]);
-		$display("memory[7]=%h",memory[7]);
-		$display("memory[8]=%h",memory[8]);
-		$display("memory[9]=%h",memory[9]);
 	end
 endmodule
 
-module encoder8to3(out,in);
+module encoder8to3(out,in);	//in[0]=1 -> out = 0
 	input[7:0] in;
 	output[2:0] out;
 	reg[2:0] out;
@@ -176,7 +166,7 @@ module encoder8to3(out,in);
 	end
 endmodule
 
-module mux5to1(out,sel,ld,r0,r1,r2,r3,r4);
+module mux5to1(out,sel,ld,r0,r1,r2,r3,r4);	//sel = 0 -> out = r0
 	output[15:0] out;
 	input[2:0] sel;
 	input ld;
@@ -201,7 +191,7 @@ module mux5to1(out,sel,ld,r0,r1,r2,r3,r4);
 endmodule
 
 
-module mux2to1(out,sel,ld,r0,r1);
+module mux2to1(out,sel,ld,r0,r1);	//sel = 0 -> out = r0
 	output[15:0] out;
 	input sel;
 	input ld;
@@ -217,7 +207,7 @@ module mux2to1(out,sel,ld,r0,r1);
 	end
 endmodule
 
-module Register(in,clk,out,ld,rst);
+module Register(in,clk,out,ld,rst);	//16-bit Register @ positive edge of clock
 	input[15:0] in;
 	input clk,ld,rst;
 	output[15:0] out;
@@ -232,7 +222,7 @@ module Register(in,clk,out,ld,rst);
 	end
 endmodule
 
-module Register_5bit(in,clk,out,rst);
+module Register_5bit(in,clk,out,rst);	//5-bit Register @ negative edge of clock (for state transition)
 	input[4:0] in;
 	input clk,rst;
 	output[4:0] out;
@@ -244,44 +234,7 @@ module Register_5bit(in,clk,out,rst);
 	end
 endmodule
 
-/* structural
-module decoder3to8(in,out);
-	input[2:0] in;
-	output[7:0] out;
-	wire[7:0] w1,w2;
-	
-	or(w1[0],in[0],in[1]);
-	or(w2[0],w1[0],in[2]);
-	not(out[0],w2[0]);
-	
-	nor(w1[1],in[1],in[2]);
-	and(out[1],w1[1],in[0]);
-	
-	nor(w1[2],in[2],in[0]);
-	and(out[2],w1[2],in[1]);
-	
-	and(w1[3],in[0],in[1]);
-	not(w2[3],in[2]);
-	and(out[3],w1[3],w2[3]);
-
-	nor(w1[4],in[1],in[0]);
-	and(out[4],w1[4],in[2]);
-	
-	and(w1[5],in[2],in[0]);
-	not(w2[5],in[1]);
-	and(out[5],w2[5],w1[5]);
-	
-	and(w1[6],in[2],in[1]);
-	not(w2[6],in[0]);
-	and(out[6],w2[6],w1[6]);
-	
-	and(w1[7],in[0],in[1]);
-	and(out[7],w1[7],in[2]);
-
-endmodule
-*/
-
-module decoder3to8(in,out,ld);
+module decoder3to8(in,out,ld);	// in = 0 -> out[0] = 1;
 	input[2:0] in;
 	input ld;
 	output[7:0] out;
@@ -306,7 +259,7 @@ module decoder3to8(in,out,ld);
 endmodule
 
 
-module mux8to1(out,sel,ld,r0,r1,r2,r3,r4,r5,r6,r7);
+module mux8to1(out,sel,ld,r0,r1,r2,r3,r4,r5,r6,r7);	//sel = 0 -> out = r0
 	output[15:0] out;
 	input[2:0] sel;
 	input ld;
@@ -331,7 +284,7 @@ module mux8to1(out,sel,ld,r0,r1,r2,r3,r4,r5,r6,r7);
 endmodule
 
 
-module mux8to1_1bit(out,sel,ld,r0,r1,r2,r3,r4,r5,r6,r7);
+module mux8to1_1bit(out,sel,ld,r0,r1,r2,r3,r4,r5,r6,r7);	// sel = 0 -> out = r0
 	output out;
 	input[2:0] sel;
 	input ld;
@@ -356,7 +309,16 @@ module mux8to1_1bit(out,sel,ld,r0,r1,r2,r3,r4,r5,r6,r7);
 endmodule
 
 
-module reg_bank(data,wp,pa,wrr,rdr,p,clk,rst,r0,r1,r2,r3,r4,r5,r6,r7);
+module reg_bank(data,wp,pa,wrr,rdr,p,clk,rst,r0,r1,r2,r3,r4,r5,r6,r7);	//Register Bank
+																								// wp = write port address
+																								// pa = read port address
+																								// wrr = write in register flag
+																								// rdr = read from register flag
+																								// p = output data
+																								// data = input data
+																								// clk = clock
+																								// rst = reset flag
+																								// ri = Register i
 	input[15:0] data;
 	input[2:0] wp,pa;
 	input wrr,rdr;
@@ -382,7 +344,21 @@ module reg_bank(data,wp,pa,wrr,rdr,p,clk,rst,r0,r1,r2,r3,r4,r5,r6,r7);
 endmodule
 
 
-module ALU(X,Y,Z,fsel,C,V,S,Z_det,alu_ld);
+module ALU(X,Y,Z,fsel,C,V,S,Z_det,alu_ld);	//ALU : X = input1, Y = input2, fsel = function select, Z = fsel(X,Y), alu_ld = load ALU
+															//fsel :-
+															// 0 -> Z = X + Y (ADD)
+															// 1 -> Z = X - Y (SUB)
+															// 2 -> Z = X & Y (AND)
+															// 3 -> Z = X | Y (OR)
+															// 4 -> Z = -X (2's complement of X)
+															// 5 -> Z = X - Y (MINUS same as SUB)
+															// 6 -> Z = X (TRANSFER X)
+															// 7 -> Z = Y (TRANSFER Y)
+															//flags :-
+															// C = carry
+															// V = overflow
+															// S = sign
+															// Z_det = zero
 	input[15:0] X,Y;
 	input[2:0]fsel;
 	input alu_ld;
@@ -418,7 +394,7 @@ module ALU(X,Y,Z,fsel,C,V,S,Z_det,alu_ld);
 endmodule
 
 
-module add( a ,b ,sum ,carryls ,carryl );
+module add( a ,b ,sum ,carryls ,carryl );	//carryls = last second carry, carryl = last carry, sum = a + b
 
 	input [15:0] a ;
 	input [15:0] b ; 
@@ -448,7 +424,7 @@ module add( a ,b ,sum ,carryls ,carryl );
 endmodule
 
 
-module sub( a ,b ,diff ,borrowls,borrowl);
+module sub( a ,b ,diff ,borrowls,borrowl);	//borrowls = last second borrow, borrowl = last borrow, diff = a - b
 
 	input [15:0] a ;
 	input [15:0] b ; 
@@ -481,7 +457,7 @@ module sub( a ,b ,diff ,borrowls,borrowl);
 endmodule
 
 
-module full_adder ( a ,b ,c ,sum ,carry );
+module full_adder ( a ,b ,c ,sum ,carry );	//(carry,sum) = a+b+c
 
 	input a ; 
 	input b ;
@@ -517,7 +493,7 @@ module and_op(X,Y,out);
 	and and_fn15(out[15],X[15],Y[15]);
 endmodule
 
-module or_op(X,Y,out);
+module or_op(X,Y,out);	//out = X | Y
 	input[15:0] X,Y;
 	output[15:0] out;
 	or or_fn0(out[0],X[0],Y[0]);
@@ -538,7 +514,7 @@ module or_op(X,Y,out);
 	or or_fn15(out[15],X[15],Y[15]);
 endmodule
 
-module cmp(x,y);
+module cmp(x,y);	//y = 2's complement of x
 	input[15:0] x;
 	output[15:0] y;
 	wire w0,w1;
