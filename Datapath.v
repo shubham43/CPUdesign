@@ -3,7 +3,6 @@
 // Company: 
 // Engineer: 
 // 
-// Create Date:    15:52:51 09/29/2016 
 // Design Name: 
 // Module Name:    CPU_datapath 
 // Project Name: 
@@ -19,8 +18,65 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 
-module CPU_datapath();
-		
+module CPU_datapath(clk,ldPC,ldIR,ldMAR,rd_mem,wr_mem,ldtmp,ldMDRZ,ldMDRdata,wr_reg,rd_reg,ldALU,
+	ldXPC,ldYPC,ldXtmp,ldYtmp,ldXreg,ldYreg,ldXmem,ldYmem,ldXtmp2,ldYtmp2,
+	wr_regA,rd_regA,fsel,opd1,opd2,opd3,C,V,S,Z_det,state,next_state,opc,reset,
+	rom_mem0,rom_mem1,rom_mem2,rom_mem3,rom_mem4,rom_mem5,rom_mem6,rom_mem7,rom_mem8,rom_mem9,
+	rom_mem10,rom_mem11,rom_mem12,rom_mem13,rom_mem14,rom_mem15,rom_mem16,rom_mem17,rom_mem18,rom_mem19,
+	r0,r1,r2,r3,r4,r5,r6,r7);
+	
+	
+	wire[15:0] Zbus,XYbus,PC,IRin,MAR,out_data,MDRin,MDR,tmp,reg_rdOut,Y;
+	wire[2:0] XYbusInSel;
+	wire ldXYPC,ldXYtmp,ldXYreg,ldXYmem,ldXYtmp2,ldMDR,ldwY0,ldwY1,ldwY2,ldwXY0,ldwXY1,ldwXY2,ldXYbus,ldY;
+	input clk,reset,ldPC,ldIR,ldMAR,rd_mem,wr_mem,ldtmp,ldMDRZ,ldMDRdata,wr_reg,rd_reg,ldALU;
+	input ldXPC,ldYPC,ldXtmp,ldYtmp,ldXreg,ldYreg,ldXmem,ldYmem,ldXtmp2,ldYtmp2;
+	input[2:0] wr_regA,rd_regA,fsel;
+	input[4:0] next_state;
+	input[15:0] rom_mem0,rom_mem1,rom_mem2,rom_mem3,rom_mem4,rom_mem5,rom_mem6,rom_mem7,rom_mem8,rom_mem9;
+	input[15:0] rom_mem10,rom_mem11,rom_mem12,rom_mem13,rom_mem14,rom_mem15,rom_mem16,rom_mem17,rom_mem18,rom_mem19;
+	output[4:0] state;
+	output[6:0] opc;
+	output[2:0] opd1,opd2,opd3;
+	output C,V,S,Z_det;
+	output[15:0] r0,r1,r2,r3,r4,r5,r6,r7;
+	Register ProgCntr(Zbus,clk,PC,ldPC,reset);
+	Register InstReg(out_data,clk,{opc,opd1,opd2,opd3},ldIR,reset);
+	Register MAddReg(Zbus,clk,MAR,ldMAR,reset);
+	Register Temp(Zbus,clk,tmp,ldtmp,reset);
+	Register MDataReg(MDRin,clk,MDR,ldMDR,reset);
+	Memory mem(MAR,rd_mem,wr_mem,clk,MDR,out_data,reset,
+		rom_mem0,rom_mem1,rom_mem2,rom_mem3,rom_mem4,rom_mem5,rom_mem6,rom_mem7,rom_mem8,rom_mem9,
+		rom_mem10,rom_mem11,rom_mem12,rom_mem13,rom_mem14,rom_mem15,rom_mem16,rom_mem17,rom_mem18,rom_mem19);
+	mux2to1 MemDataRegInMux(MDRin,ldMDRZ,ldMDR,out_data,Zbus);
+	or omdr0(ldMDR,ldMDRZ,ldMDRdata);
+	
+	or oPC(ldXYPC,ldXPC,ldYPC);
+	or otmp(ldXYtmp,ldXtmp,ldYtmp);
+	or oreg(ldXYreg,ldXreg,ldYreg);
+	or omem(ldXYmem,ldXmem,ldYmem);
+	or otmp2(ldXYtmp2,ldXtmp2,ldYtmp2);
+	or oY0(ldwY0,ldYPC,ldYtmp);
+	or oY1(ldwY1,ldwY0,ldYreg);
+	or oY2(ldwY2,ldwY1,ldYmem);
+	or oY3(ldY,ldwY2,ldYtmp2);
+	or oXY0(ldwXY0,ldXYPC,ldXYtmp);
+	or oXY1(ldwXY1,ldwXY0,ldXYreg);
+	or oXY2(ldwXY2,ldwXY1,ldXYmem);
+	or oXY3(ldXYbus,ldwXY2,ldXYtmp2);
+   encoder8to3 XSelectLine(XYbusInSel,{1'b0,1'b0,1'b0,ldXYtmp2,ldXYmem,ldXYreg,ldXYtmp,ldXYPC});
+
+	mux5to1 XYbusInMux(XYbus,XYbusInSel,ldXYbus,PC,tmp,reg_rdOut,MDR,16'b0000000000000010);
+	reg_bank regs(Zbus,wr_regA,rd_regA,wr_reg,rd_reg,reg_rdOut,clk,reset,r0,r1,r2,r3,r4,r5,r6,r7);
+	ALU alu_op(XYbus,Y,Zbus,fsel,C,V,S,Z_det,ldALU);
+	Register buffer0(XYbus,clk,Y,ldY,reset);
+	
+	Register_5bit next_move(next_state,clk,state,reset);
+	
+	always@(clk&(~reset))begin
+		$display("\n state=%h PC=%h MAR=%h tmp=%h MDR=%h MDRin=%h ldMDR=%h out_data=%h XYbusInSel=%h ldXYbus=%h XYbus=%h Y=%h fsel=%h ldALU=%h Zbus=%h r0=%h r1=%h r2=%h r3=%h r4=%h\n",state,PC,MAR,tmp,MDR,MDRin,ldMDR,out_data,XYbusInSel,ldXYbus,XYbus,Y,fsel,ldALU,Zbus,r0,r1,r2,r3,r4);
+	end
+
 endmodule
 
 
@@ -173,6 +229,18 @@ module Register(in,clk,out,ld,rst);
 			if(ld)out=in;
 			else out=out;
 		end
+	end
+endmodule
+
+module Register_5bit(in,clk,out,rst);
+	input[4:0] in;
+	input clk,rst;
+	output[4:0] out;
+	reg[4:0] out;
+	always@(negedge clk or posedge rst)
+	begin
+		if(rst)out=5'b0;
+		else out=in;
 	end
 endmodule
 
