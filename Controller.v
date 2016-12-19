@@ -44,7 +44,8 @@ module CPU_controller(
 	reg after4goto6,after1goto21,after17goto3,after3goto12,after3goto14,after4goto15;
 	reg after6goto20,after6goto9,after12goto14,after8goto11,after6goto17,after14goto18,after10goto7;
 	
-	
+	//afterXgotoY = 1 -> on reaching state X next state to go to is Y	
+	//for description on other control signals refer to Controller specifications
 	
 	always@(state or reset)begin
 		casex(state)
